@@ -1,90 +1,82 @@
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 
 import './App.css';
 
-class App extends Component {
-  render() {
-    return [
-      <div>
-      <p>
-        <b>
-          This is an example of error boundaries in React 16.
-          <br /><br />
-          Click on the numbers to increase the counters.
-          <br />
-          The counter is programmed to throw when it reaches 5. This simulates a JavaScript error in a component.
-        </b>
-      </p>
-      <hr />
-      <ErrorBoundary>
-        <p>These two counters are inside the same error boundary. If one crashes, the error boundary will replace both of them.</p>
-        <BuggyCounter />
-        <BuggyCounter />
-      </ErrorBoundary>
-      <hr />
-      <p>These two counters are each inside of their own error boundary. So if one crashes, the other is not affected.</p>
-      <ErrorBoundary><BuggyCounter /></ErrorBoundary>
-      <ErrorBoundary><BuggyCounter /></ErrorBoundary>
-    </div>
-    ];
-    
-  }
-}
-class ErrorBoundary extends React.Component {
+const modalRoot = document.getElementById('modal-root');
+
+class Modal extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null, errorInfo: null };
+    this.el = document.createElement('div');
   }
-  
-  componentDidCatch(error, errorInfo) {
-    // Catch errors in any components below and re-render with error message
-    this.setState({
-      error: error,
-      errorInfo: errorInfo
-    })
-    // You can also log error messages to an error reporting service here
+
+  componentDidMount() {
+    // The portal element is inserted in the DOM tree after
+    // the Modal's children are mounted, meaning that children
+    // will be mounted on a detached DOM node. If a child
+    // component requires to be attached to the DOM tree
+    // immediately when mounted, for example to measure a
+    // DOM node, or uses 'autoFocus' in a descendant, add
+    // state to Modal and only render the children when Modal
+    // is inserted in the DOM tree.
+    modalRoot.appendChild(this.el);
   }
-  
+
+  componentWillUnmount() {
+    modalRoot.removeChild(this.el);
+  }
+
   render() {
-    if (this.state.errorInfo) {
-      // Error path
-      return (
-        <div>
-          <h2>Something went wrong.</h2>
-          <details style={{ whiteSpace: 'pre-wrap' }}>
-            {this.state.error && this.state.error.toString()}
-            <br />
-            {this.state.errorInfo.componentStack}
-          </details>
-        </div>
-      );
-    }
-    // Normally, just render children
-    return this.props.children;
-  }  
+    return ReactDOM.createPortal(
+      this.props.children,
+      this.el,
+    );
+  }
 }
 
-class BuggyCounter extends React.Component {
+
+class App extends Component {
   constructor(props) {
     super(props);
-    this.state = { counter: 0 };
+    this.state = {clicks: 0};
     this.handleClick = this.handleClick.bind(this);
   }
-  
+
   handleClick() {
-    this.setState(({counter}) => ({
-      counter: counter + 1
+    // This will fire when the button in Child is clicked,
+    // updating Parent's state, even though button
+    // is not direct descendant in the DOM.
+    this.setState(prevState => ({
+      clicks: prevState.clicks + 1
     }));
   }
-  
+
   render() {
-    if (this.state.counter === 5) {
-      // Simulate a JS error
-      throw new Error('I crashed!');
-    }
-    return <h1 onClick={this.handleClick}>{this.state.counter}</h1>;
+    return (
+      <div onClick={this.handleClick}>
+        <p>Number of clicks: {this.state.clicks}</p>
+        <p>
+          Open up the browser DevTools
+          to observe that the button
+          is not a child of the div
+          with the onClick handler.
+        </p>
+        <Modal>
+          <Child />
+        </Modal>
+      </div>
+    );
   }
 }
-
+function Child() {
+  // The click event on this button will bubble up to parent,
+  // because there is no 'onClick' attribute defined
+  return (
+    <div className="modal">
+      <button>Click</button>
+    </div>
+  );
+}
 
 export default App;
